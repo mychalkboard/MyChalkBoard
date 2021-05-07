@@ -9,6 +9,7 @@ public class drawController: Node2D
     // private string b = "text";
 
     // Called when the node enters the scene tree for the first time.
+
     public bool mouseLeftPressed=false;
     public bool mouseRightPressed=false;
 
@@ -17,7 +18,7 @@ public class drawController: Node2D
 
     public List<Vector2> mousePosTemp=new List<Vector2>();
 
-    public List<drawObject> drawContainer=new List<drawObject>();
+    public List<Node2D> drawContainer=new List<Node2D>();
 
     public Node2D drawContainerNode;
 
@@ -26,6 +27,8 @@ public class drawController: Node2D
     public drawObject lastDrawObject=null;
 
     public Vector2 lastDrawPoint=Vector2.Left;
+
+    public bool isChangedDrawings=false;
 
     public TextureRect background;
 
@@ -36,9 +39,10 @@ public class drawController: Node2D
     [Signal]
     public delegate void colorChanged(int _colorIndex);
 
-    public List<drawObject> undoList=new List<drawObject>();
+    public List<Node2D> undoList=new List<Node2D>();
 
     public Button helpButton;
+   
     public override void _Ready()
     {
         drawContainerNode=(Node2D)Owner.GetNode("canvasViewportContainer/canvasViewport/drawContainer");
@@ -61,8 +65,16 @@ public class drawController: Node2D
         onViewportSizeChanged();
 
         CallDeferred("loadLastDrawings");
+
+
+        
         
 
+    }
+    public override void _ExitTree()
+    {
+        base._ExitTree();
+        GD.Print("cikildi");
     }
 
     public void onViewportSizeChanged(){
@@ -119,7 +131,10 @@ public class drawController: Node2D
             
 
         }
-        if(@event is InputEventMouseMotion){
+
+
+        
+        if(@event is InputEventMouseMotion eventMouseMotion){
             Update();
         }
         if(@event is InputEventKey keyEvent){
@@ -140,15 +155,34 @@ public class drawController: Node2D
                 if(currentColorIndex>colorOptions.Count-1)currentColorIndex=0;
                 EmitSignal("colorChanged",currentColorIndex);
             }
+            if(keyEvent.Scancode==(int)KeyList.Control){
+                saveLastDrawings();
+            }
 
         }
         
     }
 
+    
+
+
+    
+
+    public override void _Notification(int what)
+    {
+        if(what==MainLoop.NotificationWmQuitRequest || what==MainLoop.NotificationWmMouseExit){
+            saveLastDrawings();
+        }
+    }
+
     public void saveLastDrawings(){
+        if(isChangedDrawings==false)return;
+        GD.Print("Viewport Saving: Started...");
         var img=drawContainerViewport.GetTexture().GetData();
         img.FlipY();
-        GD.Print(img.SavePng("user://lastDraw.png") );
+        GD.Print(img.SavePng("user://lastDraw.png") ); //saving texture
+        isChangedDrawings=false;
+        GD.Print("Viewport Saving: Finished!");
     }
     public void setEmptyLastDrawings(){
         var img=new Image();
@@ -201,15 +235,33 @@ public class drawController: Node2D
                 
     }
 
-    
+    public void isDrawObjectConvertedSprite(Node2D _obj, Sprite _sprite){
+        var contIndex=drawContainer.LastIndexOf(_obj);
+        if(contIndex!=-1){
+            drawContainer.RemoveAt(contIndex);
+            drawContainer.Insert(contIndex,_sprite);
+        }
+        var unIndex=undoList.LastIndexOf(_obj);
+        if(unIndex!=-1){
+            undoList.RemoveAt(unIndex);
+            undoList.Insert(unIndex,_sprite);
+        }
+        
+        
+    }
 
     public void endDraw(){
         if(lastDrawObject==null)return;
         lastDrawObject.Update();
         lastDrawObject.drawEnded=true;
+        lastDrawObject.startToConvertSprite();
+        lastDrawObject.Connect("converted_sprite",this,"isDrawObjectConvertedSprite");
         lastDrawObject=null;
         mousePosTemp.Clear();
-        saveLastDrawings();
+        isChangedDrawings=true;
+        //This state show bad performance when user draw fast emp.Clear(//);
+        //saveLastDrawings();
+
 
     }
 
@@ -258,25 +310,9 @@ public class drawController: Node2D
     }
 
     public void clearUndo(){
-        foreach(drawObject obj in undoList){
+        foreach(Node2D obj in undoList){
             obj.QueueFree();
         }
         undoList.Clear();
-
     }
-
-    
-    
-
-    public enum brushType{
-        draw,
-        erase
-    }
-     
-
-//  // Called every frame. 'delta' is the elapsed time since the previous frame.
-//  public override void _Process(float delta)
-//  {
-//      
-//  }
 }

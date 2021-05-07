@@ -1,4 +1,4 @@
-<b>MyChalkBoard</b> is an application for you to quickly sketch with a chalk. An online version is available now, The desktop version will be released after some improvements are added.
+<b>MyChalkBoard</b> is an application for you to quickly sketch with a chalk. An browser version is available now, The desktop version will be released after some improvements are added.
 
 App on Browser: [mychalkboard.github.io](https://mychalkboard.github.io/)
 
